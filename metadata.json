@@ -1,0 +1,6 @@
+{
+  "name": "Makao",
+  "description": "Real-time Kenya real estate & property finder with live geolocation, listings across Nairobi, Mombasa, Kisumu, Nakuru, and seamless Firebase sync.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
