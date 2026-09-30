@@ -1,6 +1,12 @@
 package com.example.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -53,6 +59,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -95,21 +102,27 @@ fun HomeScreen(
     onRequestGps: () -> Unit,
     onToggleFavorite: (String) -> Unit,
     onSelectProperty: (Property) -> Unit,
-    onSelectMapProperty: (Property) -> Unit,
+    onSelectMapProperty: (Property?) -> Unit,
     onOpenFilters: () -> Unit,
     onOpenAddProperty: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var locationMenuExpanded by remember { mutableStateOf(false) }
+    var isMapControlsVisible by rememberSaveable { mutableStateOf(true) }
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
             // TOP HEADER: Zillow Search Bar & Quick Switchers
-            Surface(
-                color = MaterialTheme.colorScheme.surface,
-                shadowElevation = 3.dp,
-                modifier = Modifier.fillMaxWidth()
+            AnimatedVisibility(
+                visible = !isMapView || isMapControlsVisible,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
             ) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surface,
+                    shadowElevation = 3.dp,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -206,7 +219,10 @@ fun HomeScreen(
                                 shape = RoundedCornerShape(20.dp),
                                 color = KenyaForestGreen,
                                 modifier = Modifier
-                                    .clickable(onClick = onToggleMapView)
+                                    .clickable(onClick = {
+                                        isMapControlsVisible = true
+                                        onToggleMapView()
+                                    })
                                     .testTag("toggle_map_view_button")
                             ) {
                                 Row(
@@ -338,6 +354,7 @@ fun HomeScreen(
                     }
                 }
             }
+            }
 
             // BODY: Toggle between List View and Interactive Scrollable Map View
             if (isMapView) {
@@ -350,6 +367,8 @@ fun HomeScreen(
                     onOpenPropertyDetail = onSelectProperty,
                     onSelectPresetLocation = onSelectPresetLocation,
                     onRequestGps = onRequestGps,
+                    isUiVisible = isMapControlsVisible,
+                    onToggleUiVisibility = { isMapControlsVisible = !isMapControlsVisible },
                     modifier = Modifier.weight(1f)
                 )
             } else {
@@ -447,17 +466,23 @@ fun HomeScreen(
         }
 
         // Floating Action Button: Post Listing in real-time
-        ExtendedFloatingActionButton(
-            onClick = onOpenAddProperty,
-            icon = { Icon(Icons.Default.Add, contentDescription = null) },
-            text = { Text("List Property", fontWeight = FontWeight.Bold) },
-            containerColor = KenyaForestGreen,
-            contentColor = Color.White,
-            shape = RoundedCornerShape(16.dp),
+        AnimatedVisibility(
+            visible = !isMapView,
+            enter = fadeIn() + scaleIn(),
+            exit = fadeOut() + scaleOut(),
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(bottom = 16.dp, end = 16.dp)
-                .testTag("fab_add_property")
-        )
+        ) {
+            ExtendedFloatingActionButton(
+                onClick = onOpenAddProperty,
+                icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                text = { Text("List Property", fontWeight = FontWeight.Bold) },
+                containerColor = KenyaForestGreen,
+                contentColor = Color.White,
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.testTag("fab_add_property")
+            )
+        }
     }
 }

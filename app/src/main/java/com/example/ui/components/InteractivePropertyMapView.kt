@@ -1,15 +1,19 @@
 package com.example.ui.components
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -118,10 +122,12 @@ fun InteractivePropertyMapView(
     userLocation: UserLocation,
     properties: List<Property>,
     selectedProperty: Property?,
-    onSelectProperty: (Property) -> Unit,
+    onSelectProperty: (Property?) -> Unit,
     onOpenPropertyDetail: (Property) -> Unit,
     onSelectPresetLocation: (PresetLocation) -> Unit,
     onRequestGps: () -> Unit,
+    isUiVisible: Boolean = true,
+    onToggleUiVisibility: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -201,6 +207,21 @@ fun InteractivePropertyMapView(
         )
     }
 
+    val topPadding by animateDpAsState(
+        targetValue = if (isUiVisible) 110.dp else 0.dp,
+        label = "map_top_padding"
+    )
+    val bottomPadding by animateDpAsState(
+        targetValue = if (isUiVisible) {
+            if (selectedProperty != null) 210.dp else 140.dp
+        } else 0.dp,
+        label = "map_bottom_padding"
+    )
+
+    BackHandler(enabled = !isUiVisible) {
+        onToggleUiVisibility()
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -212,10 +233,14 @@ fun InteractivePropertyMapView(
             cameraPositionState = cameraPositionState,
             properties = mapProperties,
             uiSettings = mapUiSettings,
-            contentPadding = PaddingValues(top = 110.dp, bottom = if (selectedProperty != null) 210.dp else 140.dp),
+            contentPadding = PaddingValues(top = topPadding, bottom = bottomPadding),
             onMapClick = {
-                // Tapping on empty map dismisses focused card
-                // User can re-select by tapping any pin or carousel item
+                // Tapping on empty map where there isn't a property hides UI overlays for clarity
+                // or restores them if currently hidden
+                if (selectedProperty != null) {
+                    onSelectProperty(null)
+                }
+                onToggleUiVisibility()
             }
         ) {
             // User Location Marker
@@ -251,6 +276,9 @@ fun InteractivePropertyMapView(
                     snippet = "${property.formattedPrice} • ${property.neighborhood}",
                     zIndex = if (isSelected) 100f else 10f,
                     onClick = {
+                        if (!isUiVisible) {
+                            onToggleUiVisibility()
+                        }
                         onSelectProperty(property)
                         coroutineScope.launch {
                             cameraPositionState.animate(
@@ -270,12 +298,17 @@ fun InteractivePropertyMapView(
         }
 
         // 2. TOP OVERLAY: LOCATION BAR & PRESET REGION CHIPS
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp)
+        AnimatedVisibility(
+            visible = isUiVisible,
+            enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+            modifier = Modifier.align(Alignment.TopCenter)
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
             // Header Card with current location, home count, and layer switcher
             Surface(
                 shape = RoundedCornerShape(16.dp),
@@ -446,15 +479,21 @@ fun InteractivePropertyMapView(
                     }
                 }
             }
+            }
         }
 
         // 3. FLOATING ACTION BUTTONS: Zoom In (+), Zoom Out (-), My Location (GPS)
-        Column(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        AnimatedVisibility(
+            visible = isUiVisible,
+            enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
+            exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut(),
+            modifier = Modifier.align(Alignment.CenterEnd)
         ) {
+            Column(
+                modifier = Modifier
+                    .padding(end = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
             // Zoom In Button
             FloatingActionButton(
                 onClick = {
@@ -517,15 +556,21 @@ fun InteractivePropertyMapView(
                     contentDescription = "Recenter on my location"
                 )
             }
+            }
         }
 
         // 4. BOTTOM PREVIEW CAROUSEL / SELECTED PROPERTY CARD (Zillow style)
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(bottom = 8.dp)
+        AnimatedVisibility(
+            visible = isUiVisible,
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+            modifier = Modifier.align(Alignment.BottomCenter)
         ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+            ) {
             if (selectedProperty != null) {
                 // Focused Single Property Detailed Card
                 Surface(
@@ -559,7 +604,7 @@ fun InteractivePropertyMapView(
 
                             IconButton(
                                 onClick = {
-                                    // Deselect by triggering select with another or closing
+                                    onSelectProperty(null)
                                 },
                                 modifier = Modifier.size(24.dp)
                             ) {
@@ -774,6 +819,7 @@ fun InteractivePropertyMapView(
             }
         }
     }
+}
 }
 
 /**

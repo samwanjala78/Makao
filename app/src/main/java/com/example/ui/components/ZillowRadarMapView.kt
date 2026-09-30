@@ -15,10 +15,12 @@ fun ZillowRadarMapView(
     userLocation: UserLocation,
     properties: List<Property>,
     selectedProperty: Property?,
-    onSelectProperty: (Property) -> Unit,
+    onSelectProperty: (Property?) -> Unit,
     onOpenPropertyDetail: (Property) -> Unit,
     onSelectPresetLocation: (PresetLocation) -> Unit,
     onRequestGps: () -> Unit,
+    isUiVisible: Boolean = true,
+    onToggleUiVisibility: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     InteractivePropertyMapView(
@@ -29,6 +31,8 @@ fun ZillowRadarMapView(
         onOpenPropertyDetail = onOpenPropertyDetail,
         onSelectPresetLocation = onSelectPresetLocation,
         onRequestGps = onRequestGps,
+        isUiVisible = isUiVisible,
+        onToggleUiVisibility = onToggleUiVisibility,
         modifier = modifier
     )
 }
